@@ -1,5 +1,5 @@
-spacy
+spacy==3.8.5
 scikit-learn
 networkx
-ko_core_news_sm
-en_core_web_sm
+python -m spacy download ko_core_news_sm
+python -m spacy download en_core_web_sm
