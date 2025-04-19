@@ -37,9 +37,10 @@ def summarize_en(text, num_sentences=5, reference_summary=None):
     summary_sentences = [s[1] for s in summary_sentences]
 
     summary = " ".join(summary_sentences)
-    summary_vectors = vectorize_tfidf_en([summary])
 
-    cosine_sim = cosine_similarity(sentence_vectors, summary_vectors)
+    vectorizer = TfidfVectorizer()
+    vectors = vectorizer.fit_transform([text, summary])
+    cosine_sim = cosine_similarity(vectors[0:1], vectors[1:2])[0][0]
     
     # Calculate loss (1 - similarity as a simple loss function)
     # Lower loss is better
@@ -48,7 +49,9 @@ def summarize_en(text, num_sentences=5, reference_summary=None):
     # If reference summary is provided, also calculate similarity with it
     ref_sim = None
     if reference_summary:
-        ref_sim = cosine_similarity(reference_summary, summary_vectors)
+        vectorizer = TfidfVectorizer()
+        vectors = vectorizer.fit_transform([reference_summary, summary])
+        ref_sim = cosine_similarity(vectors[0:1], vectors[1:2])[0][0]
     
     metrics = {
         'cosine_similarity': cosine_sim,
@@ -92,5 +95,6 @@ def summarize_ko(text, num_sentences=5):
 
 if __name__ == '__main__':
     article_text_en = calling_data("data\en\en1")
-    summary_en = summarize_en(article_text_en, num_sentences=2)
+    summary_en, metrics= summarize_en(article_text_en, num_sentences=2)
     print("English Summary:", summary_en)
+    print(f'{metrics=}')
