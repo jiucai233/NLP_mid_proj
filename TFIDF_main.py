@@ -1,6 +1,6 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from utils import sentence_segmentation, vectorize_tfidf, apply_textrank
+from TFIDF_utils import sentence_segmentation, vectorize_tfidf, apply_textrank
 import pandas as pd
 
 def read_abstract_from_pkl(path):
@@ -32,44 +32,63 @@ def summarize_en(text, num_sentences=5, reference_summary=None):
     """
 
     # 1. segment sentences
-    sentences = sentence_segmentation(text,language='en')
+    sentences = sentence_segmentation(text, language='en')
+    sentences = [s for s in sentences if len(s.strip().split()) > 3]  # remove very short sentences
+
+    if len(sentences) < num_sentences:
+        num_sentences = len(sentences)
 
     # 2. vectorize sentences (TF-IDF)
-    sentence_vectors = vectorize_tfidf(sentences)
+    vectorizer = TfidfVectorizer()
+    sentence_vectors = vectorizer.fit_transform(sentences)
 
     # 3. construct similarity matrix
     similarity_matrix = cosine_similarity(sentence_vectors)
 
-    # 4. apply TextRank alghorithm
-    ranked_sentences = apply_textrank(similarity_matrix, sentences)
+    # 4. apply TextRank algorithm
+    scores = similarity_matrix.sum(axis=1)
+    ranked_sentences = sorted(zip(scores, sentences), key=lambda x: x[0], reverse=True)
 
     # 5. choose top ranked sentences
-    summary_sentences = sorted(ranked_sentences, key=lambda x: x[0])[:num_sentences]
-    summary_sentences = [s[1] for s in summary_sentences]
-
+    top_sentences = sorted(ranked_sentences[:num_sentences], key=lambda x: sentences.index(x[1]))
+    summary_sentences = [s[1] for s in top_sentences]
     summary = " ".join(summary_sentences)
 
-    vectorizer = TfidfVectorizer()
-    vectors = vectorizer.fit_transform([text, summary])
-    cosine_sim = cosine_similarity(vectors[0:1], vectors[1:2])[0][0]
-    
-    # Calculate loss (1 - similarity as a simple loss function)
-    # Lower loss is better
+    # 6. Evaluation metrics
+    full_vector = vectorizer.transform([text])
+    summary_vector = vectorizer.transform([summary])
+
+    cosine_sim = cosine_similarity(full_vector, summary_vector)[0][0]
     loss = 1 - cosine_sim
-    
-    # If reference summary is provided, also calculate similarity with it
+
+    # sentence-level analysis
+    summary_indices = [sentences.index(s) for s in summary_sentences]
+    other_indices = [i for i in range(len(sentences)) if i not in summary_indices]
+
+    avg_self_similarity = cosine_sim
+
+    if other_indices:
+        summary_vecs = sentence_vectors[summary_indices].toarray()
+        other_vecs = sentence_vectors[other_indices].toarray()
+        avg_diff = 1 - cosine_similarity(summary_vecs.mean(axis=0).reshape(1, -1), other_vecs).mean()
+    else:
+        avg_diff = None
+
     ref_sim = None
     if reference_summary:
-        vectorizer = TfidfVectorizer()
-        vectors = vectorizer.fit_transform([reference_summary, summary])
-        ref_sim = cosine_similarity(vectors[0:1], vectors[1:2])[0][0]
-    
+        ref_vectors = vectorizer.transform([reference_summary])
+        ref_sim = cosine_similarity(ref_vectors, summary_vector)[0][0]
+
     metrics = {
         'cosine_similarity': cosine_sim,
         'loss': loss,
+        'average_self_similarity': avg_self_similarity,
+        'average_diff_with_others': avg_diff,
         'reference_similarity': ref_sim
     }
+
     return summary, metrics
+
 
 def summarize_ko(text, num_sentences=5):
     """
@@ -84,16 +103,16 @@ def summarize_ko(text, num_sentences=5):
     """
 
     # 1. 句子分割
-    sentences = sentence_segmentation_ko(text)
+    sentences = sentence_segmentation(text)
 
     # 2. 句子向量化 (TF-IDF)
-    sentence_vectors = vectorize_tfidf_ko(sentences)
+    sentence_vectors = vectorize_tfidf(sentences)
     print(f'{sentence_vectors}')
     # 3. 构建相似度矩阵
     similarity_matrix = cosine_similarity(sentence_vectors)
 
     # 4. 应用 TextRank 算法
-    ranked_sentences = apply_textrank_ko(similarity_matrix, sentences)
+    ranked_sentences = apply_textrank(similarity_matrix, sentences)
     print(f'{ranked_sentences}')
 
     # 5. 选择排名最高的句子
