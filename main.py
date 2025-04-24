@@ -2,11 +2,28 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from english_utils import sentence_segmentation_en, vectorize_tfidf_en, apply_textrank_en
 from korean_utils import sentence_segmentation_ko, vectorize_tfidf_ko, apply_textrank_ko
+import pandas as pd
+import pickle
 
 def calling_data(path):
     with open(path, "r", encoding="utf-8") as file:
         text = file.read()
     return text
+
+def read_abstract_from_pkl(path):
+    """
+    从 pkl 文件中读取 abstract 并返回一个文本。
+
+    Args:
+        path (str): pkl 文件的路径。
+
+    Returns:
+        str: abstract 列的文本。
+    """
+    df = pd.read_pickle(path)
+    abstract_text = df['Abstract'].str.cat(sep=' ')
+    return abstract_text
+
 def summarize_en(text, num_sentences=5, reference_summary=None):
     """
     从英语足球比赛新闻文章中提取关键句子并生成摘要。
@@ -94,7 +111,8 @@ def summarize_ko(text, num_sentences=5):
     return summary
 
 if __name__ == '__main__':
-    article_text_en = calling_data("data\en\en1")
+    # article_text_en = calling_data("data\en\en1")
+    article_text_en = read_abstract_from_pkl("data/arxiv_papers.pkl")
     summary_en, metrics= summarize_en(article_text_en, num_sentences=2)
     print("English Summary:", summary_en)
     print(f'{metrics=}')
