@@ -1,24 +1,17 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from english_utils import sentence_segmentation_en, vectorize_tfidf_en, apply_textrank_en
-from korean_utils import sentence_segmentation_ko, vectorize_tfidf_ko, apply_textrank_ko
+from utils import sentence_segmentation, vectorize_tfidf, apply_textrank
 import pandas as pd
-import pickle
-
-def calling_data(path):
-    with open(path, "r", encoding="utf-8") as file:
-        text = file.read()
-    return text
 
 def read_abstract_from_pkl(path):
     """
-    从 pkl 文件中读取 abstract 并返回一个文本。
+    read abstract from pkl file.
 
     Args:
-        path (str): pkl 文件的路径。
+        path (str): pkl file path.
 
     Returns:
-        str: abstract 列的文本。
+        str: abstract text.
     """
     df = pd.read_pickle(path)
     abstract_text = df['Abstract'].str.cat(sep=' ')
@@ -26,30 +19,31 @@ def read_abstract_from_pkl(path):
 
 def summarize_en(text, num_sentences=5, reference_summary=None):
     """
-    从英语足球比赛新闻文章中提取关键句子并生成摘要。
+    extractive summarization of English articles.
 
     Args:
-        text (str): 新闻文章的文本。
-        num_sentences (int): 摘要中要包含的句子数量。
+        text (str): English article text.
+        num_sentences (int): number of sentences in the summary.
+        reference_summary (str): reference summary for comparison.
 
     Returns:
-        str: 新闻文章的摘要。
+        str: core sentence of the article.
+        metrics (dict): evaluation metrics for the summary.
     """
 
-    # 1. 句子分割
-    sentences = sentence_segmentation_en(text)
+    # 1. segment sentences
+    sentences = sentence_segmentation(text,language='en')
 
-    # 2. 句子向量化 (TF-IDF)
-    sentence_vectors = vectorize_tfidf_en(sentences)
+    # 2. vectorize sentences (TF-IDF)
+    sentence_vectors = vectorize_tfidf(sentences)
 
-    # 3. 构建相似度矩阵
+    # 3. construct similarity matrix
     similarity_matrix = cosine_similarity(sentence_vectors)
 
-    # 4. 应用 TextRank 算法
-    ranked_sentences = apply_textrank_en(similarity_matrix, sentences)
+    # 4. apply TextRank alghorithm
+    ranked_sentences = apply_textrank(similarity_matrix, sentences)
 
-
-    # 5. 选择排名最高的句子
+    # 5. choose top ranked sentences
     summary_sentences = sorted(ranked_sentences, key=lambda x: x[0])[:num_sentences]
     summary_sentences = [s[1] for s in summary_sentences]
 
@@ -111,7 +105,6 @@ def summarize_ko(text, num_sentences=5):
     return summary
 
 if __name__ == '__main__':
-    # article_text_en = calling_data("data\en\en1")
     article_text_en = read_abstract_from_pkl("data/arxiv_papers.pkl")
     summary_en, metrics= summarize_en(article_text_en, num_sentences=2)
     print("English Summary:", summary_en)
