@@ -32,18 +32,18 @@ def preprocess_text(text):
     tokens = [token for token in tokens if token not in string.punctuation]
 
     return tokens
-    # 文本预处理
+    # Text preprocessing
 def build_vocabulary(tokenized_sentences):
-    # 모든 단어 수집
+    # Collect all words
     all_words = [word for sentence in tokenized_sentences for word in sentence]
     
-    # 단어 빈도 계산
+    # Calculate word frequency
     word_counts = Counter(all_words)
     
-    # 빈도순으로 정렬 (가장 빈번한 것부터)
+    # Sort by frequency (most frequent first)
     sorted_words = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)
     
-    # 단어에 ID 할당 (빈도순)
+    # Assign ID to word (frequency order)
     word_to_id = {word: i for i, (word, _) in enumerate(sorted_words)}
     id_to_word = {i: word for word, i in word_to_id.items()}
     
