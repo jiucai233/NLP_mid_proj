@@ -25,14 +25,16 @@ def preprocess_text(text):
     tokens = [token.lower() for token in tokens]
 
     # Stop word removal
-    #stop_words = set(stopwords.words('english'))
-    #tokens = [token for token in tokens if token not in stop_words]
+    stop_words = set(stopwords.words('english'))
+    tokens = [token for token in tokens if token not in stop_words]
 
     # Punctuation removal
     tokens = [token for token in tokens if token not in string.punctuation]
 
-    return tokens
-    # Text preprocessing
+    text = " ".join(tokens)
+    # Remove spaces between characters
+    text = "".join(text.split())
+    return text
 def build_vocabulary(tokenized_sentences):
     # Collect all words
     all_words = [word for sentence in tokenized_sentences for word in sentence]
