@@ -4,7 +4,7 @@ import pandas as pd
 # Create search query
 search = arxiv.Search(
   query = "cs.AI",
-  max_results = 10,  # Limit the number of results
+  max_results = 100,  # Limit the number of results
   sort_by = arxiv.SortCriterion.LastUpdatedDate
 )
 

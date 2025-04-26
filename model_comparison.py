@@ -3,7 +3,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import precision_recall_fscore_support
 import matplotlib.pyplot as plt
 import pickle
-from TFIDF_main import get_tfidf_vectors
+from TFIDF_main import get_tfidf_vectors, find_similar_abstract
 from GLOVE_model import GloVeModel
 from arxivDataPreProcess import preprocess_text
 import torch
@@ -15,7 +15,8 @@ def evaluate_tfidf(tfidf_matrix, query_vector, true_labels=None, predicted_label
     Evaluates the TF-IDF model based on cosine similarity and optional classification metrics.
     Returns a dict with similarity scores and evaluation metrics.
     """
-    cosine_scores = cosine_similarity(tfidf_matrix, query_vector).flatten()
+    query_vector = query_vector.reshape(1, -1)
+    cosine_scores = cosine_similarity(query_vector, tfidf_matrix).flatten()
     results = {'cosine_scores': cosine_scores}
 
     if true_labels is not None and predicted_labels is not None:
@@ -35,7 +36,6 @@ def evaluate_glove(model, input_embedding, df, word_to_id):
     Evaluates the GloVe model by computing cosine similarity for each abstract.
     Returns all similarity scores and the best match.
     """
-    abstract_embeddings = []
     for abstract in df['Abstract']:
         emb = model.get_text_embedding(abstract, word_to_id)
         abstract_embeddings.append(emb)
@@ -84,13 +84,17 @@ if __name__ == '__main__':
     input_text = "attention mechanism"
 
     # TF-IDF Evaluation
-    tfidf_matrix, query_vector, best_abstract = get_tfidf_vectors(input_text, df)
+    cosine_similarities, query_vector, best_abstract, vectorizer = get_tfidf_vectors(input_text, df)
+    # Pass the vectorizer to find_similar_abstract
+    summary, title, metrics = find_similar_abstract(input_text, df, vectorizer)
+
     tfidf_results = evaluate_tfidf(
-        tfidf_matrix,
+        cosine_similarities,
         query_vector,
         true_labels=None,
         predicted_labels=None
     )
+    print(f"best_abstract: {best_abstract}")
     visualize_similarity(tfidf_results['cosine_scores'], "TF-IDF Similarity Distribution")
 
     # Load GloVe embeddings and model

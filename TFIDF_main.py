@@ -5,6 +5,9 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from arxivDataPreProcess import preprocess_text
+import csv
+import matplotlib.pyplot as plt
+
 def read_abstract_from_pkl(path):
     """
     Reads abstract and title from pkl file.
@@ -98,9 +101,6 @@ def summarize_ko(text, num_sentences=5):
     Args:
         text (str): The text of the news article.
         num_sentences (int): The number of sentences to include in the summary.
-
-    Returns:
-        str: A summary of the news article.
     """
 
     # 1. Sentence segmentation
@@ -124,20 +124,19 @@ def summarize_ko(text, num_sentences=5):
     summary = " ".join(summary_sentences)
     return summary
 
-def find_similar_abstract(input_text, df):
+def find_similar_abstract(input_text, df, tfidf_matrix, tfidf_vectorizer):
     """
-    Finds the most similar abstract in the dataframe to the input text.
+    Finds the most similar abstract in the dataframe to the input text using a pre-computed TF-IDF matrix.
 
     Args:
         input_text (str): The input text.
         df (pd.DataFrame): The dataframe containing abstracts and titles.
+        tfidf_matrix (sparse matrix): Pre-computed TF-IDF matrix for the abstracts.
+        tfidf_vectorizer (TfidfVectorizer): Fitted TF-IDF vectorizer.
 
     Returns:
         tuple: The most similar abstract and its title.
     """
-    tfidf_vectorizer = TfidfVectorizer()
-    tfidf_matrix = tfidf_vectorizer.fit_transform(df['Abstract'])
-
     input_vector = tfidf_vectorizer.transform([input_text])
 
     cosine_similarities = cosine_similarity(input_vector, tfidf_matrix)
@@ -172,10 +171,62 @@ def get_tfidf_vectors(input_text, df):
 if __name__ == '__main__':
     df = read_abstract_from_pkl("data/arxiv_papers.pkl")
 
-    input_text = input("Enter some text: ")
+    # Create TF-IDF vectorizer and matrix
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf_matrix = tfidf_vectorizer.fit_transform(df['Abstract'])
 
-    most_similar_abstract, title, metrics = find_similar_abstract(input_text, df)
+    keywords = [
+        "artificial intelligence",
+        "machine learning",
+        "natural language processing",
+        "deep learning",
+        "computer vision",
+        "data mining",
+        "information retrieval",
+        "knowledge representation",
+        "reasoning",
+        "planning",
+        "robotics",
+        "cognitive science",
+        "neural networks",
+        "fuzzy logic",
+        "expert systems",
+        "big data",
+        "cloud computing",
+        "internet of things",
+        "cybersecurity",
+        "bioinformatics"
+    ]
 
-    print("Most similar abstract:", most_similar_abstract)
-    print("Title:", title)
-    print("Metrics:", metrics)
+    all_metrics = []
+    for keyword in keywords:
+        most_similar_abstract, title, metrics = find_similar_abstract(keyword, df, tfidf_matrix, tfidf_vectorizer)
+        all_metrics.append(metrics)
+
+        print(f"Keyword: {keyword}")
+        print("Most similar abstract:", most_similar_abstract)
+        print("Title:", title)
+        print("Metrics:", metrics)
+        print("-" * 20)
+
+    # Calculate average metrics
+    avg_metrics = {}
+    if all_metrics:  # Check if all_metrics is not empty
+        for metric in all_metrics[0].keys():
+            if metric != 'reference_similarity':
+                avg_metrics[metric] = sum([m[metric] for m in all_metrics if m[metric] is not None]) / len(all_metrics)
+
+        print("Average Metrics:", avg_metrics)
+
+        # Visualize metric fluctuations (example for cosine_similarity)
+        cosine_similarities = [m['cosine_similarity'] for m in all_metrics]
+        plt.figure(figsize=(10, 6))  # Adjust figure size for better readability
+        plt.plot(keywords, cosine_similarities)
+        plt.xlabel("Keywords")
+        plt.ylabel("Cosine Similarity")
+        plt.title("Cosine Similarity Fluctuation")
+        plt.xticks(rotation=45, ha="right")
+        plt.tight_layout()
+        plt.show()
+    else:
+        print("No keywords found.")
