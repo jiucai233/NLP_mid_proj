@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import scipy.sparse as sparse
-
+from collections import defaultdict
 class GloVeModel(nn.Module):
     """GloVe 모델 구현
     
@@ -87,7 +87,9 @@ class GloVeDataset(Dataset):
         self.i_indices, self.j_indices = cooccurrence_matrix.nonzero()
         self.values = cooccurrence_matrix.data
         
-        print(f"데이터셋 크기: {len(self.values)}")
+        print(f"Number of non-zero elements: {len(self.values)}")
+        print(f"i_indices: {self.i_indices}")
+        print(f"j_indices: {self.j_indices}")
     
     def __len__(self):
         return len(self.values)
@@ -179,6 +181,7 @@ def build_cooccurrence_matrix_glove(tokenized_corpus, word_to_id, window_size=1)
                 # 동시출현 빈도 증가 (가중치 적용)
                 cooccurrence_dict[(center_id, context_id)] += weight
     
+    print(f"Cooccurrence dictionary: {cooccurrence_dict}")
     # 희소 행렬 생성을 위한 데이터 준비
     row_indices = []
     col_indices = []
@@ -194,4 +197,3 @@ def build_cooccurrence_matrix_glove(tokenized_corpus, word_to_id, window_size=1)
                                             shape=(vocab_size, vocab_size))
     
     return cooccurrence_matrix
-

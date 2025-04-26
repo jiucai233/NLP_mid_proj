@@ -25,16 +25,13 @@ def preprocess_text(text):
     tokens = [token.lower() for token in tokens]
 
     # Stop word removal
-    stop_words = set(stopwords.words('english'))
-    tokens = [token for token in tokens if token not in stop_words]
+    #stop_words = set(stopwords.words('english'))
+    #tokens = [token for token in tokens if token not in stop_words]
 
     # Punctuation removal
     tokens = [token for token in tokens if token not in string.punctuation]
 
-    # Join the tokens back into a string
-    preprocessed_text = ' '.join(tokens)
-
-    return preprocessed_text
+    return tokens
     # 文本预处理
 def build_vocabulary(tokenized_sentences):
     # 모든 단어 수집
@@ -63,7 +60,7 @@ def read_abstract_from_pkl(path):
         str: abstract text.
     """
     df = pd.read_pickle(path)
-    abstract_text = df['Abstract'].str.cat(sep=' ')
+    abstract_text = df['Abstract'].tolist()
     return abstract_text
 
 if __name__ == '__main__':
