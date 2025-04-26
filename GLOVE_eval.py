@@ -1,0 +1,150 @@
+import torch
+import pickle
+from arxivDataPreProcess import read_abstract_from_pkl, build_vocabulary, preprocess_text
+
+def cosine_similarity(embedding1, embedding2):
+    """Calculates the cosine similarity between two embeddings."""
+    dot_product = torch.dot(embedding1, embedding2)
+    norm_embedding1 = torch.norm(embedding1)
+    norm_embedding2 = torch.norm(embedding2)
+    similarity = dot_product / (norm_embedding1 * norm_embedding2)
+    return similarity.item()
+
+def get_phrase_embedding(phrase, word_to_id, combined_embeddings):
+    """Calculates the average GloVe embedding for a given phrase."""
+    # Collect embeddings of valid words
+    word_embeddings = [torch.tensor(combined_embeddings[word_to_id[token]]) for token in phrase if token in word_to_id]
+    
+    if not word_embeddings:
+        return None  # Return None if no valid word is found
+    
+    # Calculate average embedding
+    phrase_embedding = torch.mean(torch.stack(word_embeddings), dim=0)
+    return phrase_embedding
+
+def recommend_papers(phrase, word_to_id, combined_embeddings, raw_abstract_data):
+    """Recommends papers based on the cosine similarity between the phrase and paper abstracts."""
+    phrase_embedding = get_phrase_embedding(phrase, word_to_id, combined_embeddings)
+    
+    if phrase_embedding is None:
+        print("No valid words found in the phrase. Cannot generate recommendations.")
+        return []
+    
+    similarities = []
+    for abstract in raw_abstract_data:
+        abstract_text = " ".join(abstract)  # 确保 abstract 是一个字符串
+        abstract_text = preprocess_text(abstract_text)
+        abstract_embedding = get_phrase_embedding(abstract_text, word_to_id, combined_embeddings)
+        if abstract_embedding is not None:
+            similarity = cosine_similarity(phrase_embedding, abstract_embedding)
+            similarities.append(similarity)
+        else:
+            similarities.append(-1)  # Assign -1 if abstract embedding is None
+    
+    # Rank papers based on similarity scores
+    ranked_papers = sorted(enumerate(similarities), key=lambda x: x[1], reverse=True)
+    
+    # Recommend top 5 papers
+    top_papers = ranked_papers[:5]
+    
+    recommendations = []
+    for index, similarity in top_papers:
+        recommendations.append({
+            'index': index,
+            'similarity': similarity,
+            'abstract': raw_abstract_data[index]
+        })
+    
+    return recommendations
+
+def calculate_metrics(phrase, recommendations, word_to_id, combined_embeddings, raw_abstract_data):
+    """Calculates evaluation metrics for the recommendations by embedding phrase and abstract together."""
+    
+    if not recommendations:
+        print("No recommendations found. Cannot calculate metrics.")
+        return {}
+
+    metrics = []
+    for paper in recommendations:
+        abstract = " ".join(paper['abstract'])
+        phrase_str = " ".join(phrase)
+        concatenated_text = phrase_str + " " + abstract
+        preprocessed_text = preprocess_text(concatenated_text)
+        
+        concatenated_embedding = get_phrase_embedding(preprocessed_text, word_to_id, combined_embeddings)
+        
+        if concatenated_embedding is None:
+            print("Could not calculate embedding for concatenated text.")
+            metrics.append(0.0)
+            continue
+        
+        # Split the concatenated embedding into phrase and abstract embeddings (approximation)
+        phrase_len = len(phrase.split())
+        
+        if phrase_len == 0:
+            print("Phrase is empty. Cannot calculate metrics.")
+            metrics.append(0.0)
+            continue
+
+        phrase_embedding = get_phrase_embedding(phrase, word_to_id, combined_embeddings)
+        abstract_embedding = get_phrase_embedding(preprocess_text(abstract), word_to_id, combined_embeddings)
+
+        if phrase_embedding is None or abstract_embedding is None:
+            metrics.append(0.0)
+            continue
+        
+        similarity = cosine_similarity(phrase_embedding, abstract_embedding)
+        metrics.append(similarity)
+    
+    avg_similarity = sum(metrics) / len(metrics) if metrics else 0.0
+    loss = 1 - avg_similarity
+    
+    final_metrics = {
+        'cosine_similarity': avg_similarity,
+        'loss': loss
+    }
+    
+    return final_metrics
+
+# Data loading
+data_path = "data/arxiv_papers.pkl"
+raw_abstract_data = read_abstract_from_pkl(data_path)
+
+# Load embedding results
+with open('glove_embeddings_results.pkl', 'rb') as f:
+    embeddings_results = pickle.load(f)
+
+center_embeddings = embeddings_results['center_embeddings']
+context_embeddings = embeddings_results['context_embeddings']
+combined_embeddings = embeddings_results['combined_embeddings']
+word_to_id = embeddings_results['word_to_id']
+embedding_dim = embeddings_results['embedding_dim']
+losses = embeddings_results['losses']
+
+import sys
+
+# Get phrase from command line arguments
+if len(sys.argv) > 1:
+    phrase = sys.argv[1]
+else:
+    phrase = "natural language processing"  # Default phrase
+
+phrase = preprocess_text(phrase)
+recommendations = recommend_papers(phrase, word_to_id, combined_embeddings, raw_abstract_data)
+
+if recommendations:
+    print("\nRecommended papers:")
+    for paper in recommendations:
+        print(f"Index: {paper['index']}, Similarity: {paper['similarity']:.4f}")
+        print(f"Abstract: {paper['abstract'][:200]}...\n")
+else:
+    print("No recommendations found.")
+
+metrics = calculate_metrics(phrase, recommendations, word_to_id, combined_embeddings, raw_abstract_data)
+
+if metrics:
+    print("\nMetrics:")
+    for metric, value in metrics.items():
+        print(f"{metric}: {value:.4f}")
+else:
+    print("No metrics calculated.")
