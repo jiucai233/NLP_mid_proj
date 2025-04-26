@@ -34,6 +34,36 @@ class GloVeModel(nn.Module):
         # Initialize bias terms to 0
         nn.init.zeros_(self.center_biases.weight)
         nn.init.zeros_(self.context_biases.weight)
+
+    def get_text_embedding(self, text, word_to_id):
+        """
+        Calculate the GloVe embedding for a given text.
+
+        Args:
+            text: The input text (string).
+            word_to_id: A dictionary mapping words to their IDs.
+
+        Returns:
+            A numpy array representing the GloVe embedding for the text.
+        """
+        # Preprocess the text
+        from arxivDataPreProcess import preprocess_text
+        processed_text = preprocess_text(text)
+
+        # Convert words to IDs
+        word_ids = [word_to_id[word] for word in processed_text if word in word_to_id]
+
+        # If no words are found in the vocabulary, return a zero vector
+        if not word_ids:
+            return torch.zeros(self.center_embeddings.embedding_dim)
+
+        # Get embeddings
+        word_embeddings = self.center_embeddings(torch.tensor(word_ids, dtype=torch.long))
+
+        # Calculate the average embedding
+        text_embedding = torch.mean(word_embeddings, dim=0)
+
+        return text_embedding.detach().cpu().numpy()
     
     def forward(self, center_word_idx, context_word_idx):
         """Forward propagation function
@@ -86,10 +116,6 @@ class GloVeDataset(Dataset):
         # Extract non-zero elements from the sparse matrix
         self.i_indices, self.j_indices = cooccurrence_matrix.nonzero()
         self.values = cooccurrence_matrix.data
-        
-        print(f"Number of non-zero elements: {len(self.values)}")
-        print(f"i_indices: {self.i_indices}")
-        print(f"j_indices: {self.j_indices}")
     
     def __len__(self):
         return len(self.values)
