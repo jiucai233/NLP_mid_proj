@@ -5,29 +5,29 @@ import pandas as pd
 
 def read_abstract_from_pkl(path):
     """
-    read abstract from pkl file.
+    Reads abstract and title from pkl file.
 
     Args:
         path (str): pkl file path.
 
     Returns:
-        str: abstract text.
+        pandas.DataFrame: DataFrame containing 'Abstract' and 'Title' columns.
     """
     df = pd.read_pickle(path)
     return df[['Abstract', 'Title']]
 
 def summarize_en(text, num_sentences=5, reference_summary=None):
     """
-    extractive summarization of English articles.
+    Extractive summarization of English articles.
 
     Args:
         text (str): English article text.
-        num_sentences (int): number of sentences in the summary.
-        reference_summary (str): reference summary for comparison.
+        num_sentences (int): Number of sentences in the summary.
+        reference_summary (str): Reference summary for comparison.
 
     Returns:
-        str: core sentence of the article.
-        metrics (dict): evaluation metrics for the summary.
+        str: Core sentence of the article.
+        metrics (dict): Evaluation metrics for the summary.
     """
 
     # 1. segment sentences
@@ -91,34 +91,34 @@ def summarize_en(text, num_sentences=5, reference_summary=None):
 
 def summarize_ko(text, num_sentences=5):
     """
-    从韩语足球比赛新闻文章中提取关键句子并生成摘要。
+    Extracts key sentences from a Korean soccer game news article and generates a summary.
 
     Args:
-        text (str): 新闻文章的文本。
-        num_sentences (int): 摘要中要包含的句子数量。
+        text (str): The text of the news article.
+        num_sentences (int): The number of sentences to include in the summary.
 
     Returns:
-        str: 新闻文章的摘要。
+        str: A summary of the news article.
     """
 
-    # 1. 句子分割
+    # 1. Sentence segmentation
     sentences = sentence_segmentation(text)
 
-    # 2. 句子向量化 (TF-IDF)
+    # 2. Sentence vectorization (TF-IDF)
     sentence_vectors = vectorize_tfidf(sentences)
     print(f'{sentence_vectors}')
-    # 3. 构建相似度矩阵
+    # 3. Construct similarity matrix
     similarity_matrix = cosine_similarity(sentence_vectors)
 
-    # 4. 应用 TextRank 算法
+    # 4. Apply TextRank algorithm
     ranked_sentences = apply_textrank(similarity_matrix, sentences)
     print(f'{ranked_sentences}')
 
-    # 5. 选择排名最高的句子
+    # 5. Select the highest-ranked sentences
     summary_sentences = sorted(ranked_sentences, key=lambda x: x[0])[:num_sentences]
     summary_sentences = [s[1] for s in summary_sentences]
 
-    # 6. 生成摘要
+    # 6. Generate summary
     summary = " ".join(summary_sentences)
     return summary
 
