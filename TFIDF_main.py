@@ -2,7 +2,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from TFIDF_utils import sentence_segmentation, vectorize_tfidf, apply_textrank
 import pandas as pd
-
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from arxivDataPreProcess import preprocess_text
 def read_abstract_from_pkl(path):
     """
     Reads abstract and title from pkl file.
@@ -147,6 +149,25 @@ def find_similar_abstract(input_text, df):
     summary, metrics = summarize_en(abstract, num_sentences=2)
 
     return summary, title, metrics
+
+def get_tfidf_vectors(input_text, df):
+    """
+    Returns TF-IDF matrix, query vector, and the most similar abstract text.
+    """
+    processed_abstracts = df['Abstract'].apply(preprocess_text)
+    joined_abstracts = [' '.join(tokens) for tokens in processed_abstracts]
+
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform(joined_abstracts)
+
+    processed_query = ' '.join(preprocess_text(input_text))
+    query_vector = vectorizer.transform([processed_query])
+
+    cosine_similarities = cosine_similarity(query_vector, tfidf_matrix)
+    best_idx = cosine_similarities.argmax()
+    best_abstract = df['Abstract'].iloc[best_idx]
+
+    return tfidf_matrix, query_vector, best_abstract
 
 if __name__ == '__main__':
     df = read_abstract_from_pkl("data/arxiv_papers.pkl")
