@@ -1,5 +1,6 @@
 import nltk
 import string
+import pandas as pd
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from collections import Counter
@@ -34,7 +35,7 @@ def preprocess_text(text):
     preprocessed_text = ' '.join(tokens)
 
     return preprocessed_text
-
+    # 文本预处理
 def build_vocabulary(tokenized_sentences):
     # 모든 단어 수집
     all_words = [word for sentence in tokenized_sentences for word in sentence]
@@ -50,6 +51,21 @@ def build_vocabulary(tokenized_sentences):
     id_to_word = {i: word for word, i in word_to_id.items()}
     
     return word_to_id, id_to_word, word_counts
+
+def read_abstract_from_pkl(path):
+    """
+    read abstract from pkl file.
+
+    Args:
+        path (str): pkl file path.
+
+    Returns:
+        str: abstract text.
+    """
+    df = pd.read_pickle(path)
+    abstract_text = df['Abstract'].str.cat(sep=' ')
+    return abstract_text
+
 if __name__ == '__main__':
     text = "This is an example sentence with some punctuation and stop words."
     preprocessed_text = preprocess_text(text)

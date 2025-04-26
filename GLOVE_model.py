@@ -105,7 +105,7 @@ class GloVeDataset(Dataset):
         
         return center_word_idx, context_word_idx, cooccurrence, log_cooccurrence
 
-def glove_loss(predicted, log_cooccurrence, cooccurrence, x_max=100.0, alpha=0.75):
+def GloVeLoss(predicted, log_cooccurrence, cooccurrence, x_max=100.0, alpha=0.75):
     """GloVe 손실 함수
     
     Args:
@@ -195,36 +195,3 @@ def build_cooccurrence_matrix_glove(tokenized_corpus, word_to_id, window_size=1)
     
     return cooccurrence_matrix
 
-class GloVeDataset(Dataset):
-    """GloVe 학습을 위한 데이터셋
-    
-    동시출현 행렬에서 비영(non-zero) 원소를 추출하여 데이터셋 구성
-    
-    Args:
-        cooccurrence_matrix: 희소 행렬 형태의 동시출현 행렬
-        device: 텐서를 저장할 장치 (CPU 또는 GPU)
-    """
-    def __init__(self, cooccurrence_matrix, device='cpu'):
-        self.device = device
-        
-        # 희소 행렬에서 비영(non-zero) 원소 추출
-        self.i_indices, self.j_indices = cooccurrence_matrix.nonzero()
-        self.values = cooccurrence_matrix.data
-        
-        print(f"데이터셋 크기: {len(self.values)}")
-    
-    def __len__(self):
-        return len(self.values)
-    
-    def __getitem__(self, idx):
-        center_word_idx = self.i_indices[idx]
-        context_word_idx = self.j_indices[idx]
-        cooccurrence = self.values[idx]
-        
-        # 텐서로 변환
-        center_word_idx = torch.tensor(center_word_idx, dtype=torch.long).to(self.device)
-        context_word_idx = torch.tensor(context_word_idx, dtype=torch.long).to(self.device)
-        cooccurrence = torch.tensor(cooccurrence, dtype=torch.float).to(self.device)
-        log_cooccurrence = torch.log(cooccurrence + 1e-8)  # 수치 안정성을 위해 작은 값 추가
-        
-        return center_word_idx, context_word_idx, cooccurrence, log_cooccurrence
