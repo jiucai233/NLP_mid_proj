@@ -116,46 +116,96 @@ def calculate_metrics(phrase, recommendations, word_to_id, combined_embeddings, 
 
     return final_metrics
 
+if __name__ == '__main__':
+    # Data loading
+    data_path = "data/arxiv_papers.pkl"
+    raw_abstract_data = read_abstract_from_pkl(data_path)
 
-# Data loading
-data_path = "data/arxiv_papers.pkl"
-raw_abstract_data = read_abstract_from_pkl(data_path)
+    # Load embedding results
+    with open('glove_embeddings_results.pkl', 'rb') as f:
+        embeddings_results = pickle.load(f)
 
-# Load embedding results
-with open('glove_embeddings_results.pkl', 'rb') as f:
-    embeddings_results = pickle.load(f)
+    center_embeddings = embeddings_results['center_embeddings']
+    context_embeddings = embeddings_results['context_embeddings']
+    combined_embeddings = embeddings_results['combined_embeddings']
+    word_to_id = embeddings_results['word_to_id']
+    embedding_dim = embeddings_results['embedding_dim']
+    losses = embeddings_results['losses']
 
-center_embeddings = embeddings_results['center_embeddings']
-context_embeddings = embeddings_results['context_embeddings']
-combined_embeddings = embeddings_results['combined_embeddings']
-word_to_id = embeddings_results['word_to_id']
-embedding_dim = embeddings_results['embedding_dim']
-losses = embeddings_results['losses']
+    import sys
 
-import sys
+    # Get phrase from command line arguments
+    if len(sys.argv) > 1:
+        phrase = sys.argv[1]
+    else:
+        phrase = "natural language processing"  # Default phrase
 
-# Get phrase from command line arguments
-if len(sys.argv) > 1:
-    phrase = sys.argv[1]
-else:
-    phrase = "natural language processing"  # Default phrase
+    phrase = preprocess_text(phrase)
+    recommendations = recommend_papers(phrase, word_to_id, combined_embeddings, raw_abstract_data)
 
-phrase = preprocess_text(phrase)
-recommendations = recommend_papers(phrase, word_to_id, combined_embeddings, raw_abstract_data)
+    if recommendations:
+        print("\nRecommended papers:")
+        for paper in recommendations:
+            print(f"Index: {paper['index']}, Similarity: {paper['similarity']:.4f}")
+            print(f"Abstract: {paper['abstract'][:200]}...\n")
+    else:
+        print("No recommendations found.")
 
-if recommendations:
-    print("\nRecommended papers:")
-    for paper in recommendations:
-        print(f"Index: {paper['index']}, Similarity: {paper['similarity']:.4f}")
-        print(f"Abstract: {paper['abstract'][:200]}...\n")
-else:
-    print("No recommendations found.")
+    metrics = calculate_metrics(phrase, recommendations, word_to_id, combined_embeddings, raw_abstract_data)
 
-metrics = calculate_metrics(phrase, recommendations, word_to_id, combined_embeddings, raw_abstract_data)
+    if metrics:
+        print("\nMetrics:")
+        for metric, value in metrics.items():
+            print(f"{metric}: {value:.4f}")
+    else:
+        print("No metrics calculated.")
 
-if metrics:
-    print("\nMetrics:")
-    for metric, value in metrics.items():
-        print(f"{metric}: {value:.4f}")
-else:
-    print("No metrics calculated.")
+    import matplotlib.pyplot as plt
+
+    keywords = [
+        "artificial intelligence",
+        "machine learning",
+        "natural language processing",
+        "deep learning",
+        "computer vision",
+        "data mining",
+        "information retrieval",
+        "knowledge representation",
+        "reasoning",
+        "planning",
+        "robotics",
+        "cognitive science",
+        "neural networks",
+        "fuzzy logic",
+        "expert systems",
+        "big data",
+        "cloud computing",
+        "internet of things",
+        "cybersecurity",
+        "bioinformatics"
+    ]
+
+    all_metrics = []
+    for keyword in keywords:
+        keyword = preprocess_text(keyword)
+        recommendations = recommend_papers(keyword, word_to_id, combined_embeddings, raw_abstract_data)
+        metrics = calculate_metrics(keyword, recommendations, word_to_id, combined_embeddings, raw_abstract_data)
+        if metrics:
+            all_metrics.append(metrics)
+            print(f"Keyword: {keyword}")
+            print("Metrics:", metrics)
+        else:
+            print(f"No metrics calculated for keyword: {keyword}")
+            all_metrics.append({'cosine_similarity': 0, 'loss': 1})
+
+
+    # Visualize metric fluctuations (example for cosine_similarity)
+    cosine_similarities = [m['cosine_similarity'] for m in all_metrics]
+    plt.figure(figsize=(10, 6))  # Adjust figure size for better readability
+    plt.plot(keywords, cosine_similarities)
+    plt.xlabel("Keywords")
+    plt.ylabel("Cosine Similarity")
+    plt.title("Cosine Similarity Fluctuation")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    plt.show()
