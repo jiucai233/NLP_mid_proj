@@ -14,8 +14,7 @@ def read_abstract_from_pkl(path):
         str: abstract text.
     """
     df = pd.read_pickle(path)
-    abstract_text = df['Abstract'].str.cat(sep=' ')
-    return abstract_text
+    return df[['Abstract', 'Title']]
 
 def summarize_en(text, num_sentences=5, reference_summary=None):
     """
@@ -123,8 +122,39 @@ def summarize_ko(text, num_sentences=5):
     summary = " ".join(summary_sentences)
     return summary
 
+def find_similar_abstract(input_text, df):
+    """
+    Finds the most similar abstract in the dataframe to the input text.
+
+    Args:
+        input_text (str): The input text.
+        df (pd.DataFrame): The dataframe containing abstracts and titles.
+
+    Returns:
+        tuple: The most similar abstract and its title.
+    """
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf_matrix = tfidf_vectorizer.fit_transform(df['Abstract'])
+
+    input_vector = tfidf_vectorizer.transform([input_text])
+
+    cosine_similarities = cosine_similarity(input_vector, tfidf_matrix)
+
+    most_similar_index = cosine_similarities.argmax()
+
+    abstract = df['Abstract'][most_similar_index]
+    title = df['Title'][most_similar_index]
+    summary, metrics = summarize_en(abstract, num_sentences=2)
+
+    return summary, title, metrics
+
 if __name__ == '__main__':
-    article_text_en = read_abstract_from_pkl("data/arxiv_papers.pkl")
-    summary_en, metrics= summarize_en(article_text_en, num_sentences=2)
-    print("English Summary:", summary_en)
-    print(f'{metrics=}')
+    df = read_abstract_from_pkl("data/arxiv_papers.pkl")
+
+    input_text = input("Enter some text: ")
+
+    most_similar_abstract, title, metrics = find_similar_abstract(input_text, df)
+
+    print("Most similar abstract:", most_similar_abstract)
+    print("Title:", title)
+    print("Metrics:", metrics)
